@@ -1,19 +1,10 @@
 import { Router } from 'express';
-import PostController from '../Controller/postController';
+import { deletePostController } from '../Controller/postController';
+import { createPostController } from '../Controller/postController';
+import { patchPostController } from '../Controller/postController';
 
-export default function createPostRoutes(postController: PostController): Router {
-  const router = Router();
+export const postsRouter = Router();
 
-  // Exercício 3: POST /posts
-  router.post('/', postController.create);
-
-  // Exercício 5: PATCH /posts/:id
-  router.patch('/:id', postController.partialUpdate);
-
-  // Exercício 6: DELETE /posts/:id
-  router.delete('/:id', postController.delete);
-
-  // Adicione aqui rotas para os exemplos, se necessário
-
-  return router;
-}
+postsRouter.delete('/:id', deletePostController);
+postsRouter.post('/', createPostController);
+postsRouter.patch('/:id', patchPostController);
