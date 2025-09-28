@@ -1,35 +1,36 @@
-import PostData from '../Data/postData';
-import UserData from '../Data/userData';
-import { Post } from '../Data/dataBase';
+import { Post, posts } from '../Data/dataBase';
+import { findPostById, removePostFromDatabase, updatePostInDatabase, addPostToDatabase } from '../Data/postData';
+import { findUserById } from '../Data/userData';
 
-class PostBusiness {
-  constructor(private postData: PostData, private userData: UserData) {}
+    
 
-  create(post: Omit<Post, 'id' | 'createdAt' | 'published'>): Post {
-    if (!post.title || post.title.length < 3) throw new Error('Título mínimo 3 caracteres');
-    if (!post.content || post.content.length < 10) throw new Error('Conteúdo mínimo 10 caracteres');
-    if (!this.userData.getById(post.authorId)) throw new Error('Autor não existe');
-    return this.postData.create(post);
-  }
+export const canUserDelete = (userId: number, postAuthorId: number, userRole: 'user' | 'admin'): boolean => {
+  return userRole === 'admin' || userId === postAuthorId;
+};
 
-  partialUpdate(id: number, updates: Partial<Omit<Post, 'id' | 'authorId' | 'createdAt'>>): Post {
-    const post = this.postData.getById(id);
-    if (!post) throw new Error('Post não encontrado');
-    const allowed = ['title', 'content', 'published'];
-    for (const key in updates) {
-      if (!allowed.includes(key)) throw new Error('Campo não permitido');
+export const deletePost = (postId: number, userId: number): Post | null => {
+    const post = findPostById(postId);
+    const user = findUserById(userId);
+
+    if (!post || !user || !canUserDelete(userId, post.authorId, user.role)) {
+        return null; 
     }
-    return this.postData.partialUpdate(id, updates);
-  }
+    
+    return removePostFromDatabase(postId);
+};
 
-  delete(id: number, userId: number): void {
-    const post = this.postData.getById(id);
-    if (!post) throw new Error('Post não encontrado');
-    const user = this.userData.getById(userId);
-    if (!user) throw new Error('Usuário não encontrado');
-    if (post.authorId !== userId && user.role !== 'admin') throw new Error('Não autorizado');
-    this.postData.delete(id);
-  }
-}
+export const createPost = (title: string, content: string, authorId: number): Post => {
+  const newPost: Post = {
+    id: posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1,
+    title,
+    content,
+    authorId,
+    createdAt: new Date(),
+    published: false
+  };
+  return addPostToDatabase(newPost);
+};
 
-export default PostBusiness;
+export const patchPost = (postId: number, updates: Partial<Post>): Post | null => {
+  return updatePostInDatabase(postId, updates);
+};
