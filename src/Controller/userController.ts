@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { getUserById } from './userBusiness';
-import { getUsersInAgeRange } from './userBusiness';
-import { updateUser } from './userBusiness';
-import { cleanupInactiveUsers } from './userBusiness';
-import { User } from './dataBase';
+import { getUserById } from '../Business/userBusiness';
+import { getUsersInAgeRange } from '../Business/userBusiness';
+import { updateUser } from '../Business/userBusiness';
+import { cleanupInactiveUsers } from '../Business/userBusiness';
+import { User } from '../Data/dataBase';
 
 export const getUserByIdController = (req: Request, res: Response) => {
   const userId = parseInt(req.params.id as string);
