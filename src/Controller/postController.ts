@@ -1,35 +1,47 @@
-import PostData from '../Data/postData';
-import UserData from '../Data/userData';
-import { Post } from '../Data/dataBase';
+import { Request, Response } from 'express';
+import { deletePost } from '../Business/postBusiness';
+import { createPost } from '../Business/postBusiness';
+import { patchPost } from '../Business/postBusiness';
+import { findUserById } from '../Data/userData';
 
-class PostBusiness {
-  constructor(private postData: PostData, private userData: UserData) {}
-
-  create(post: Omit<Post, 'id' | 'createdAt' | 'published'>): Post {
-    if (!post.title || post.title.length < 3) throw new Error('Título mínimo 3 caracteres');
-    if (!post.content || post.content.length < 10) throw new Error('Conteúdo mínimo 10 caracteres');
-    if (!this.userData.getById(post.authorId)) throw new Error('Autor não existe');
-    return this.postData.create(post);
+export const deletePostController = (req: Request, res: Response) => {
+  const postId = parseInt(req.params.id as string);
+  const userIdHeader = req.headers['user-id'];
+  const userId = typeof userIdHeader === 'string' ? parseInt(userIdHeader) : NaN;
+  if (isNaN(postId) || isNaN(userId)) {
+    return res.status(400).json({ success: false, message: 'ID do post ou do usuário inválido.' });
   }
-
-  partialUpdate(id: number, updates: Partial<Omit<Post, 'id' | 'authorId' | 'createdAt'>>): Post {
-    const post = this.postData.getById(id);
-    if (!post) throw new Error('Post não encontrado');
-    const allowed = ['title', 'content', 'published'];
-    for (const key in updates) {
-      if (!allowed.includes(key)) throw new Error('Campo não permitido');
-    }
-    return this.postData.partialUpdate(id, updates);
+  const post = deletePost(postId, userId);
+  if (!post) {
+    return res.status(404).json({ success: false, message: 'Você não tem permissão para remover este post ou o post não foi encontrado.' });
   }
+  res.json({ success: true, message: 'Post removido com sucesso.' });
+};
 
-  delete(id: number, userId: number): void {
-    const post = this.postData.getById(id);
-    if (!post) throw new Error('Post não encontrado');
-    const user = this.userData.getById(userId);
-    if (!user) throw new Error('Usuário não encontrado');
-    if (post.authorId !== userId && user.role !== 'admin') throw new Error('Não autorizado');
-    this.postData.delete(id);
+export const createPostController = (req: Request, res: Response) => {
+  const { title, content, authorId } = req.body;
+  if (!title || !content || !authorId) {
+    return res.status(400).json({ success: false, message: 'Título, conteúdo e ID do autor são obrigatórios.' });
   }
-}
+  const author = findUserById(authorId);
+  if (!author) {
+    return res.status(404).json({ success: false, message: 'Autor do post não encontrado.' });
+  }
+  const newPost = createPost(title, content, authorId);
+  res.status(201).json({ success: true, message: 'Post criado com sucesso!', data: newPost });
+};
 
-export default PostBusiness;
+export const patchPostController = (req: Request, res: Response) => {
+  const postId = parseInt(req.params.id as string);
+  const updates = req.body;
+  const allowedUpdates = ['title', 'content', 'published'];
+  const isValidOperation = Object.keys(updates).every(update => allowedUpdates.includes(update));
+  if (isNaN(postId) || !isValidOperation) {
+    return res.status(400).json({ success: false, message: 'Atualização inválida. Campos permitidos: title, content, published.' });
+  }
+  const updatedPost = patchPost(postId, updates);
+  if (!updatedPost) {
+    return res.status(404).json({ success: false, message: 'Post não encontrado.' });
+  }
+  res.json({ success: true, message: 'Post atualizado com sucesso.', data: updatedPost });
+};
